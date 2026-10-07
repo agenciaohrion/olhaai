@@ -217,6 +217,20 @@ async function main() {
   const capGet = await fetch(BASE + cap.json.url);
   ok('captura fica visível no painel', capGet.status === 200);
 
+  // a rotação de capturas só acontece depois da 20ª por aparelho — é exatamente
+  // onde um import quebrado some o screenshot do painel inteiro
+  let lastCap = null;
+  for (let i = 0; i < 21; i++) {
+    const f = new FormData();
+    f.append('shot', new Blob([svg], { type: 'image/svg+xml' }), 'shot.svg');
+    lastCap = await call('/api/player/screenshot', { method: 'POST', token: D, form: f });
+  }
+  ok('aparelho pode enviar capturas em sequência sem erro', lastCap.status === 201, `status ${lastCap.status}`);
+  const devShots = await call(`/api/devices/${devId}`, { token: C });
+  ok('galeria de capturas aparece no detalhe da tela', (devShots.json.screenshots || []).length > 0);
+  const firstGone = await fetch(BASE + cap.json.url);
+  ok('capturas antigas são descartadas (máx. 20 por aparelho)', firstGone.status === 404, `ainda responde ${firstGone.status}`);
+
   const detail = await call(`/api/devices/${devId}`, { token: C });
   ok('detalhe do aparelho traz logs e programação', detail.status === 200 && detail.json.logs.length > 0 && detail.json.program.playlist?.id === plId);
   ok('playlog registra minutos exibidos', (detail.json.playlog[0]?.ms || 0) >= 0);

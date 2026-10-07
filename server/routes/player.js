@@ -7,7 +7,7 @@ import multer from 'multer';
 import path from 'node:path';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
-import { all, get, insert, update, UPLOAD_DIR, audit } from '../db.js';
+import { all, get, insert, update, run, UPLOAD_DIR, audit } from '../db.js';
 import { requireDevice } from '../auth.js';
 import { wrap, bad } from '../lib.js';
 import { resolveProgram } from '../program.js';
