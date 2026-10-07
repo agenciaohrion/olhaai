@@ -11,7 +11,7 @@ import { all, get, insert, update, run, UPLOAD_DIR, audit } from '../db.js';
 import { requireDevice } from '../auth.js';
 import { wrap, bad } from '../lib.js';
 import { resolveProgram } from '../program.js';
-import { broadcast, connectionStats, drainCommands } from '../realtime.js';
+import { broadcast, connectionStats, drainCommands, hasDeviceSocket } from '../realtime.js';
 
 export const router = express.Router();
 
@@ -170,8 +170,12 @@ router.post(
     if (p.app_version) patch.app_version = p.app_version;
     if (p.os) patch.os = p.os;
     applyGeo(patch, p.geo);
-    // modo efetivo: se o player reportar outro modo, sincroniza para o painel
-    if (p.mode && ['playlist', 'paused', 'takeover'].includes(p.mode) && p.mode !== req.device.mode) patch.mode = p.mode;
+    // Modo efetivo: o reported mode do aparelho só vale quando ele já está rodando a grade
+    // que o servidor quer (hash igual). Sem isso, um destaque/pausa disparado pelo painel
+    // seria apagado pelo heartbeat que saiu antes do comando chegar — e o comando sumia da fila.
+    const intended = manifestFor(req.device);
+    const inSync = !!p.hash && p.hash === intended.hash;
+    if (inSync && ['playlist', 'paused', 'takeover'].includes(p.mode) && p.mode !== req.device.mode) patch.mode = p.mode;
     if (p.playlist_id !== undefined) patch.playlist_id = p.playlist_id || null;
     update('devices', req.device.id, patch);
 
@@ -191,17 +195,14 @@ router.post(
       mode: m.program.mode,
       commands: drainCommands(fresh.id),
       server_time: Date.now(),
-      ws: isDeviceWs(fresh.id),
+      ws: hasDeviceSocket(fresh.id),
       stats: connectionStats(),
       ...(changed ? { manifest: m } : {}),
     });
   })
 );
 
-/** WebSocket do aparelho está aberto? Se sim, o painel não precisa esperar o polling. */
-function isDeviceWs() {
-  return false;
-}
+
 
 router.post(
   '/player/log',

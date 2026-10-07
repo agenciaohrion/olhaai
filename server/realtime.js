@@ -45,6 +45,12 @@ export function pushToDevice(deviceId, msg) {
   return false;
 }
 
+/** O aparelho está com WebSocket aberto agora? (painel usa para empurrar em vez de esperar polling) */
+export function hasDeviceSocket(deviceId) {
+  const set = deviceSockets.get(Number(deviceId));
+  return !!set && set.size > 0;
+}
+
 export function drainCommands(deviceId) {
   const q = commandQueue.get(deviceId) || [];
   commandQueue.set(deviceId, []);

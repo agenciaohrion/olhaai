@@ -68,18 +68,38 @@ class Device {
     this.advance();
   }
 
+  /** Recarrega a grade depois de um comando do painel e conta para o servidor o modo efetivo. */
+  async sync(label) {
+    const m = await api('/api/player/manifest', { token: this.token }).catch(() => null);
+    if (!m) return;
+    this.apply(m);
+    this.idx = -1;
+    console.log(`    ${label} → ${this.device.name}: ${m.program.mode} · ${m.program.name || 'sem grade'}`);
+  }
+
   apply(manifest) {
     this.manifest = manifest;
     this.hash = manifest.hash;
     this.mode = manifest.program.mode;
   }
 
-  connectWs() {
+  connectWs(attempt = 0) {
+    const again = (why) => {
+      if (this.stopping) return;
+      const wait = Math.min(30_000, 2000 * 2 ** Math.min(attempt, 4));
+      console.log(`    ⚠︎  ${this.device.name}: tempo real ${why} — nova tentativa em ${wait / 1000}s`);
+      setTimeout(() => this.connectWs(attempt + 1), wait);
+    };
     try {
       this.ws = new WebSocket(`${BASE.replace(/^http/, 'ws')}/ws?kind=device&token=${encodeURIComponent(this.token)}`);
     } catch {
+      again('não conectou');
       return;
     }
+    this.ws.onopen = () => {
+      this.wsFell = false;
+      console.log(`    ⇄ ${this.device.name}: tempo real conectado`);
+    };
     this.ws.onmessage = async (ev) => {
       const msg = JSON.parse(ev.data);
       if (msg.type === 'manifest:changed') {
@@ -95,10 +115,7 @@ class Device {
         await this.run(msg.payload.action, msg.payload);
       }
     };
-    this.ws.onclose = () => {
-      if (this.stopping) return;
-      setTimeout(() => this.connectWs(), 4000);
-    };
+    this.ws.onclose = () => again('caiu');
     this.ws.onerror = () => {};
   }
 
@@ -114,6 +131,8 @@ class Device {
         await api('/api/player/geo', { method: 'POST', token: this.token, body: this.geo() });
       } else if (action === 'clear') {
         await api('/api/player/log', { method: 'POST', token: this.token, body: { type: 'cache', message: 'cache limpo pelo aparelho (simulação)' } });
+      } else if (action === 'pause' || action === 'resume' || action === 'takeover') {
+        await this.sync(`⏯  ${action}`);
       } else if (action === 'identify') {
         console.log(`    👋 ${this.device.name}: piscando para identificação`);
       }

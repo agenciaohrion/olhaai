@@ -120,7 +120,13 @@ router.get(
       devices.map((d) => {
         const prog = resolveProgram(d, at);
         const last = get("SELECT media_id FROM device_logs WHERE device_id=? AND type='play' ORDER BY id DESC LIMIT 1", [d.id]);
-        const m = last?.media_id ? get('SELECT id,title,kind,filename FROM media WHERE id=?', [last.media_id]) : null;
+        // em destaque (takeover) a peça no ar é a do destaque — o aparelho não fica girando a grade
+        const onAir = prog.source === 'takeover' ? prog.items[0]?.media : null;
+        const m = onAir
+          ? { title: onAir.title, kind: onAir.kind, filename: onAir.filename }
+          : last?.media_id
+          ? get('SELECT id,title,kind,filename FROM media WHERE id=?', [last.media_id])
+          : null;
         return {
           current: m ? { id: m.id, title: m.title, kind: m.kind, src: m.filename ? `/uploads/${m.filename}` : null } : null,
           id: d.id,

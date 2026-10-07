@@ -245,6 +245,13 @@ async function main() {
   const manPaused = await call('/api/player/manifest', { token: D });
   ok('modo pausado reflete no manifest', manPaused.json.program.mode === 'paused' || hbPause.json.mode === 'paused');
 
+  // heartbeat de um aparelho desincronizado não pode desfazer o comando do painel
+  const hbStale = await call('/api/player/heartbeat', { method: 'POST', token: D, body: { hash: 'hash-velho', mode: 'playlist' } });
+  const stillPaused = await call(`/api/devices/${devId}`, { token: C });
+  ok('heartbeat atrasado não reverte o modo pausado', stillPaused.json.mode === 'paused', `voltou para ${stillPaused.json.mode}`);
+  const withWs = await call('/api/player/heartbeat', { method: 'POST', token: D, body: { hash: hbStale.json.hash, mode: 'playlist' } });
+  ok('heartbeat responde se o aparelho tem tempo real aberto', typeof withWs.json.ws === 'boolean');
+
   await call(`/api/devices/${devId}/action`, { method: 'POST', token: C, body: { action: 'resume' } });
   const manBack = await call('/api/player/manifest', { token: D });
   ok('retomar volta a grade normal', manBack.json.program.mode === 'playlist');

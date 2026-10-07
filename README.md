@@ -102,7 +102,7 @@ web/src/
   player/PlayerPage.jsx   runtime completo do aparelho
 scripts/
   simulate.mjs    simulador de aparelhos (heartbeat, GPS, capturas)
-  smoke.mjs       50 checagens de contrato da API
+  smoke.mjs       55 checagens de contrato da API
   uitest.mjs      renderiza todas as rotas em jsdom contra a API real (com teste de isolamento por empresa)
 uploads/          mídia enviada (pasta pública, nome aleatório, cache de 30 dias)
 data/signage.db   SQLite
@@ -128,7 +128,7 @@ Publicar uma playlist incrementa `version`, chama `invalidateClient()` e **empur
 ## Testes
 
 ```bash
-npm test          # scripts/smoke.mjs  → contrato da API (auth, escopo, grade, player, relatórios) — 50 checagens
+npm test          # scripts/smoke.mjs  → contrato da API (auth, escopo, grade, player, relatórios) — 55 checagens
 npm run test:ui   # scripts/uitest.mjs → monta cada rota no jsdom contra a API real e procura erro de runtime
 npm run check     # build + os dois acima
 ```
