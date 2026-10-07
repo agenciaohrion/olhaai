@@ -15,9 +15,14 @@ import { broadcast, connectionStats, drainCommands } from '../realtime.js';
 
 export const router = express.Router();
 
+/**
+ * Extensão segue o tipo que o aparelho mandou — senão o navegador recebe
+ * image/jpeg em cima de um PNG/SVG e o <img> do painel fica quebrado.
+ */
+const SHOT_EXT = { 'image/svg+xml': '.svg', 'image/png': '.png', 'image/webp': '.webp', 'image/jpeg': '.jpg', 'image/jpg': '.jpg', 'image/gif': '.gif' };
 const shots = multer.diskStorage({
   destination: (req, file, cb) => cb(null, path.join(UPLOAD_DIR, 'shots')),
-  filename: (req, file, cb) => cb(null, `${req.device.id}-${Date.now()}.jpg`),
+  filename: (req, file, cb) => cb(null, `${req.device.id}-${Date.now()}${SHOT_EXT[file.mimetype] || '.jpg'}`),
 });
 const shotUpload = multer({ storage: shots, limits: { fileSize: 6 * 1024 * 1024 } });
 

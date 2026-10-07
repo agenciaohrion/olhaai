@@ -3,7 +3,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import http from 'node:http';
 import { fileURLToPath } from 'node:url';
-import { UPLOAD_DIR, ROOT, get } from './db.js';
+import { UPLOAD_DIR, ROOT, get, all, run } from './db.js';
 import { requireUser } from './auth.js';
 import { attachRealtime } from './realtime.js';
 import { router as authRoutes } from './routes/auth.js';
@@ -100,6 +100,14 @@ app.use((err, req, res, next) => {
   if (status >= 500) console.error('[erro]', err);
   res.status(status).json({ error: err.message || 'falha interna', detail: err.code || undefined });
 });
+
+// capturas são efêmeras: se o arquivo sumiu (deploy novo, limpeza manual),
+// remove a linha para o painel não apontar <img> quebrada
+try {
+  for (const r of all('SELECT id, filename FROM screenshots')) {
+    if (!fs.existsSync(path.join(UPLOAD_DIR, 'shots', r.filename))) run('DELETE FROM screenshots WHERE id=?', [r.id]);
+  }
+} catch {}
 
 const server = http.createServer(app);
 const rt = attachRealtime(server);
