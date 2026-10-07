@@ -1,0 +1,252 @@
+@import 'tailwindcss';
+@import 'leaflet/dist/leaflet.css';
+
+@theme {
+  --color-ink: #05070f;
+  --color-ink2: #080c1b;
+  --color-panel: #0b1024;
+  --color-panel2: #101733;
+  --color-line: #1c2447;
+  --color-fg: #e9ecff;
+  --color-mute: #8d98c4;
+  --color-brand: #7c5cff;
+  --color-brand2: #22d3ee;
+  --color-ok: #34d399;
+  --color-warn: #fbbf24;
+  --color-err: #f87171;
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Sora', 'Inter', ui-sans-serif, system-ui, sans-serif;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: #05070f;
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+}
+
+::selection {
+  background: rgba(124, 92, 255, 0.4);
+}
+
+/* fundo com brilho suave, típico de console de operação */
+.app-bg::before {
+  content: '';
+  position: fixed;
+  inset: -20% -10% auto -10%;
+  height: 70vh;
+  background: radial-gradient(60% 60% at 20% 0%, rgba(124, 92, 255, 0.22), transparent 70%),
+    radial-gradient(50% 50% at 85% 10%, rgba(34, 211, 238, 0.13), transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: #222c55;
+  border-radius: 99px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@utility card {
+  background: linear-gradient(180deg, rgba(16, 23, 51, 0.86), rgba(11, 16, 36, 0.86));
+  border: 1px solid var(--color-line);
+  border-radius: 16px;
+}
+@utility card-flat {
+  background: rgba(11, 16, 36, 0.6);
+  border: 1px solid var(--color-line);
+  border-radius: 14px;
+}
+@utility hairline {
+  border-color: var(--color-line);
+}
+
+@layer components {
+  .kbd {
+    font: 600 11px/1 var(--font-sans);
+    padding: 3px 5px;
+    border-radius: 5px;
+    background: #131a35;
+    border: 1px solid var(--color-line);
+    color: var(--color-mute);
+  }
+  .grid-lines {
+    background-image: linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+    background-size: 34px 34px;
+  }
+  .skeleton {
+    background: linear-gradient(90deg, #0e1430 25%, #16204a 50%, #0e1430 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s linear infinite;
+  }
+  @keyframes shimmer {
+    to {
+      background-position: -200% 0;
+    }
+  }
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.35;
+    transform: scale(0.82);
+  }
+}
+.live-dot {
+  animation: pulse-dot 1.8s ease-in-out infinite;
+}
+
+@keyframes ticker {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(-100%);
+  }
+}
+.ticker {
+  animation: ticker linear infinite;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.fade-up {
+  animation: fade-up 0.28s ease-out both;
+}
+
+@keyframes sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(300%);
+  }
+}
+.sweep::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  width: 35%;
+  background: linear-gradient(90deg, transparent, rgba(124, 92, 255, 0.35), transparent);
+  animation: sweep 1.4s ease-in-out infinite;
+}
+
+/* ---------- Leaflet no tema escuro ---------- */
+.leaflet-container {
+  background: #070b18;
+  font-family: var(--font-sans);
+}
+.leaflet-control-attribution {
+  background: rgba(5, 7, 15, 0.72) !important;
+  color: #6d78a6 !important;
+  font-size: 10px !important;
+}
+.leaflet-control-attribution a {
+  color: #8f9ac4 !important;
+}
+.leaflet-bar a {
+  background: #0b1024 !important;
+  color: #e9ecff !important;
+  border-color: #1c2447 !important;
+}
+.leaflet-bar a:hover {
+  background: #16204a !important;
+}
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: #0b1024 !important;
+  color: var(--color-fg) !important;
+  border: 1px solid var(--color-line);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55) !important;
+}
+.leaflet-popup-content {
+  margin: 12px 14px !important;
+  font-size: 13px !important;
+}
+.leaflet-popup-close-button {
+  color: #8d98c4 !important;
+}
+.map-dark .leaflet-tile-pane {
+  filter: invert(0.935) hue-rotate(190deg) saturate(0.55) brightness(0.95);
+}
+.pin {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50% 50% 50% 4px;
+  transform: rotate(-45deg);
+  border: 1.5px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
+}
+.pin > span {
+  transform: rotate(45deg);
+  font: 800 10px/1 var(--font-sans);
+  color: #fff;
+}
+
+/* ---------- impressão de relatório (o cliente pede relatório em PDF) ---------- */
+@media print {
+  body {
+    background: #fff;
+    color: #111;
+  }
+  aside,
+  header,
+  .no-print {
+    display: none !important;
+  }
+  main {
+    padding: 0 !important;
+  }
+  .card,
+  .card-flat {
+    border-color: #ddd !important;
+    background: #fff !important;
+    box-shadow: none !important;
+    break-inside: avoid;
+  }
+  .text-mute {
+    color: #555 !important;
+  }
+  * {
+    color: #111 !important;
+  }
+  svg text {
+    fill: #111 !important;
+  }
+}
