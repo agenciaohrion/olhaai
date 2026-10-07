@@ -1,6 +1,6 @@
 /** Canal de tempo real do painel: presença, telemetria, feeds e invalidações. */
 import { useEffect, useSyncExternalStore } from 'react';
-import { getToken } from './api.js';
+import { api, getToken } from './api.js';
 
 let ws = null;
 let timer = null;
@@ -15,8 +15,47 @@ export const live = {
   mode: {}, // id -> modo efetivo reportado
   screenshots: {}, // id -> url
   errors: {}, // id -> msg
+  polledAt: null, // última vez que viemos pelo polling (sem websocket)
   rev: 0,
 };
+
+/* ------------------------------------------------------------------
+   Fallback: se o WebSocket não abrir (proxy que não faz upgrade, rede
+   corporativa, notebook dormindo), o painel continua se atualizando
+   sozinho — só que por consulta periódica em vez de empurrão.
+------------------------------------------------------------------- */
+let poll = null;
+
+async function refreshFromApi() {
+  let rows;
+  try {
+    rows = await api('/network-state');
+  } catch {
+    return; // servidor indisponível: tenta no próximo tick
+  }
+  if (!Array.isArray(rows)) return;
+  for (const r of rows) {
+    live.devices[r.id] = { ...(live.devices[r.id] || {}), ...r };
+    if (r.online) live.online.add(r.id);
+    else live.online.delete(r.id);
+    if (r.mode) live.mode[r.id] = r.mode;
+    if (r.screenshot?.filename) live.screenshots[r.id] = `/uploads/shots/${r.screenshot.filename}`;
+  }
+  live.polledAt = new Date().toISOString();
+  bump();
+}
+
+function startPolling() {
+  if (poll) return;
+  refreshFromApi();
+  poll = setInterval(() => {
+    if (!live.connected) refreshFromApi();
+  }, 6000);
+}
+function stopPolling() {
+  clearInterval(poll);
+  poll = null;
+}
 
 function bump() {
   live.rev++;
@@ -27,7 +66,9 @@ const snapshot = () => live.rev;
 
 export function connectLive() {
   const token = getToken();
-  if (!token || ws) return;
+  if (!token) return;
+  startPolling();
+  if (ws) return;
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
   try {
     ws = new WebSocket(`${proto}://${location.host}/ws?token=${encodeURIComponent(token)}`);
@@ -85,6 +126,8 @@ export function connectLive() {
 }
 
 export function disconnectLive() {
+  stopPolling();
+  live.polledAt = null;
   clearTimeout(timer);
   timer = null;
   attempts = 99;

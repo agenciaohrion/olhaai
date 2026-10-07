@@ -76,7 +76,9 @@ export default function Dashboard() {
                 sub="estado reportado por cada aparelho em tempo real"
                 right={
                   <>
-                    <Badge tone={live.connected ? 'ok' : 'err'}>{live.connected ? 'ao vivo' : 'reconectando'}</Badge>
+                    <Badge tone={live.connected ? 'ok' : live.polledAt ? 'warn' : 'err'}>
+                  {live.connected ? 'ao vivo' : live.polledAt ? 'a cada 6s' : 'reconectando'}
+                </Badge>
                     <Btn size="xs" icon={RefreshCw} onClick={() => (ov.reload(), net.reload())}>
                       atualizar
                     </Btn>

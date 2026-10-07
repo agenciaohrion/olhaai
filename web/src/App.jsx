@@ -174,11 +174,11 @@ function Shell() {
             <span
               className={cx(
                 'hidden items-center gap-1.5 rounded-lg border px-2 py-1 text-[10.5px] font-bold uppercase tracking-wider sm:flex',
-                live.connected ? 'border-ok/30 bg-ok/10 text-ok' : 'border-line bg-white/[0.03] text-mute'
+                live.connected ? 'border-ok/30 bg-ok/10 text-ok' : live.polledAt ? 'border-warn/30 bg-warn/10 text-warn' : 'border-line bg-white/[0.03] text-mute'
               )}
-              title={live.connected ? 'Conexão em tempo real ativa' : 'Reconectando ao servidor…'}
+              title={live.connected ? 'Conexão em tempo real ativa' : live.polledAt ? 'Sem websocket no caminho — o painel se atualiza sozinho a cada 6s' : 'Reconectando ao servidor…'}
             >
-              <Radio size={12} /> {live.connected ? 'tempo real' : 'reconectando'}
+              <Radio size={12} /> {live.connected ? 'tempo real' : live.polledAt ? 'atualizando' : 'reconectando'}
             </span>
             {focusId && <Badge tone="cyan">filtro: {clients.find((c) => c.id === focusId)?.brand || clients.find((c) => c.id === focusId)?.name || 'empresa'}</Badge>}
             <Btn size="sm" variant="primary" icon={Plus} onClick={() => nav(isAgency ? '/empresas?new=1' : '/telas?new=1')}>
