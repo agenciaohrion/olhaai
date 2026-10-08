@@ -10,6 +10,7 @@
     "start": "node server/index.js",
     "demo": "node scripts/demo.mjs",
     "demo:fresh": "node scripts/demo.mjs --fresh",
+    "doctor": "node scripts/doctor.mjs",
     "seed": "node server/seed.js",
     "simulate": "node scripts/simulate.mjs",
     "test": "node scripts/smoke.mjs",

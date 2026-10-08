@@ -19,6 +19,40 @@
   </head>
   <body>
     <div id="root"></div>
+    <noscript>Este painel precisa de JavaScript ativado. Liberte o site no bloqueador de scripts do navegador.</noscript>
+    <script>
+      /* Nada de tela preta muda: se o app não desenhar em 5 s, ou se um script
+         estourar, a explicação aparece na tela (vale para build quebrado, cache
+         antigo e dependência que faltou instalar). */
+      (function () {
+        var root = document.getElementById('root');
+        var box = null;
+        function esc(t) { return String(t == null ? '' : t).replace(/[&<>]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]; }); }
+        function show(title, lines) {
+          if (box) return;
+          box = document.createElement('div');
+          box.style.cssText = 'position:fixed;inset:0;display:grid;place-items:center;background:#05070f;color:#e9ecff;font:15px/1.6 system-ui,Segoe UI,Roboto,sans-serif;padding:24px;z-index:9999';
+          box.innerHTML =
+            '<div style="max-width:640px;border:1px solid #26304f;background:#0b1024;border-radius:14px;padding:22px 24px">' +
+            '<h1 style="font-size:19px;margin:0 0 10px">' + esc(title) + '</h1>' +
+            lines.filter(Boolean).map(function (l) { return '<p style="margin:6px 0;color:#aab4d4"><code style="color:#fbbf24;background:#141a33;padding:1px 6px;border-radius:5px">' + esc(l) + '</code></p>'; }).join('') +
+            '<p style="margin:14px 0 0;color:#6d78a3">F12 → Console mostra o erro completo.</p></div>';
+          document.body.appendChild(box);
+        }
+        window.addEventListener('error', function (e) {
+          if (root && root.children.length) return;
+          show('O painel não conseguiu iniciar', [e.message, e.filename ? e.filename + ':' + e.lineno : '', 'Se você acabou de instalar, rode: npm install && npm run build']);
+        });
+        new MutationObserver(function () {
+          if (root.children.length && box) { box.remove(); box = null; }
+        }).observe(root, { childList: true });
+        setTimeout(function () {
+          if (root.children.length) return;
+          var s = document.querySelector('script[type="module"]');
+          show('O painel carregou, mas não desenhou nada', [s ? 'módulo: ' + s.getAttribute('src') : 'nenhum módulo encontrado', 'rode: npm run build — e recarregue com Ctrl+Shift+R']);
+        }, 5000);
+      })();
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

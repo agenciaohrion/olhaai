@@ -75,25 +75,42 @@ app.use(
   })
 );
 
-// painel React (build) + SPA fallback
-if (fs.existsSync(path.join(DIST, 'index.html'))) {
-  app.use(express.static(DIST, { index: false, maxAge: fs.existsSync(path.join(DIST, 'assets')) ? '1h' : 0 }));
-  app.get(/^(?!\/(api|uploads|ws)).*/, (req, res) => res.sendFile(path.join(DIST, 'index.html')));
-} else {
-  app.get(/^(?!\/(api|uploads)).*/, (req, res) =>
-    res
-      .status(200)
-      .type('html')
+/**
+ * Painel React (build) + fallback de SPA.
+ *
+ * Duas regras que evitam o clássico "abre e fica preto":
+ *  1. decidimos a cada requisição se web/dist existe — assim dá para rodar
+ *     `npm run build` com o servidor de pé e a página nova aparece sem reiniciar;
+ *  2. pedido de arquivo (/assets/*.js, .css, .svg…) que não existe devolve 404
+ *     de verdade. Entregar o index.html para um <script type="module"> faz o
+ *     navegador recusar o módulo e a tela ficar escura sem nenhuma mensagem.
+ */
+const BUILD_HINT = `<!doctype html><meta charset="utf-8"><title>OLHA.AI — API ativa</title>
+  <body style="font:16px system-ui;background:#05070f;color:#e8ecff;padding:60px;max-width:720px">
+  <h1>API do OLHA.AI está no ar ✅</h1>
+  <p>O painel ainda não foi compilado. Rode <code style="background:#141a33;padding:2px 6px;border-radius:6px">npm run build</code>
+  (produção) ou <code style="background:#141a33;padding:2px 6px;border-radius:6px">npm run dev</code> (Vite + HMR) e recarregue esta página.</p>
+  <p>Check-up completo: <code style="background:#141a33;padding:2px 6px;border-radius:6px">npm run doctor</code> · Health: <a style="color:#7c5cff" href="/api/health">/api/health</a></p></body>`;
+
+app.use(express.static(DIST, { index: false, maxAge: '1h', immutable: true }));
+app.get(/^(?!\/(api|uploads|ws)).*/, (req, res) => {
+  const indexHtml = path.join(DIST, 'index.html');
+  if (/\.[a-z0-9]{2,5}$/i.test(req.path)) {
+    return res
+      .status(404)
+      .type('text/plain; charset=utf-8')
       .send(
-        `<!doctype html><meta charset="utf-8"><title>OLHA.AI — API ativa</title>
-         <body style="font:16px system-ui;background:#05070f;color:#e8ecff;padding:60px;max-width:720px">
-         <h1>API do OLHA.AI está no ar ✅</h1>
-         <p>O painel ainda não foi compilado. Rode <code style="background:#141a33;padding:2px 6px;border-radius:6px">npm run build</code>
-         (produção) ou <code style="background:#141a33;padding:2px 6px;border-radius:6px">npm run dev</code> (Vite + HMR).</p>
-         <p>Health check: <a style="color:#7c5cff" href="/api/health">/api/health</a></p></body>`
-      )
-  );
-}
+        `arquivo não encontrado no build: ${req.path}\n\n` +
+          `O index.html do seu navegador está apontando para um build antigo.\n` +
+          `Rode  npm run build  na pasta do projeto e recarregue com Ctrl+Shift+R.\n` +
+          `Check-up:  npm run doctor\n`
+      );
+  }
+  if (!fs.existsSync(indexHtml)) return res.status(200).type('html').send(BUILD_HINT);
+  // sem cache do HTML: é ele que aponta os hashes dos assets; cache velho = tela preta
+  res.setHeader('Cache-Control', 'no-cache');
+  res.sendFile(indexHtml);
+});
 
 // tratamento central de erros
 app.use((err, req, res, next) => {

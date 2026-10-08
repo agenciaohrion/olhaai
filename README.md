@@ -43,7 +43,8 @@ npm run simulate                   # em outro terminal: aparelhos falsos (GPS, c
 | sintoma | causa e saída |
 | --- | --- |
 | `'vite' não é reconhecido…` ou `Cannot find package 'express'` | o `npm install` não rodou (ou rodou pela metade). Rode de novo na pasta do projeto |
-| navegador não abre `http://localhost:4000` | o servidor não está rodando (veja a janela do `npm start`) ou a porta está ocupada — o servidor agora avisa `✗ a porta 4000 já está em uso` e sugere `$env:PORT=4100; npm start` |
+| **tela preta** ao abrir | era o build desatualizado: o `index.html` do navegador apontava para um `/assets/index-*.js` que já não existia e o servidor devolvia HTML no lugar. Agora o pedido de arquivo inexistente dá 404 com instrução, o HTML é servido com `no-cache` e o `npm run build` com o servidor de pé já vale. Na dúvida: `npm run doctor` |
+| quer um diagnóstico em vez de adivinhação | `npm run doctor` — confere Node, dependências, build, banco, porta e o MIME que o navegador vai receber | o servidor não está rodando (veja a janela do `npm start`) ou a porta está ocupada — o servidor agora avisa `✗ a porta 4000 já está em uso` e sugere `$env:PORT=4100; npm start` |
 | `Cannot find module 'node:sqlite'` | Node abaixo de 22.5 → instale o LTS atual |
 | telas todas offline | falta o simulador (`npm run simulate`) ou nenhum aparelho pareou ainda em `/player` |
 | mapa/clima/manchetes em branco | precisam de internet no **navegador**; em rede isolada aparece o estado guardado por último |

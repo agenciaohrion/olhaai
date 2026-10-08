@@ -1,6 +1,7 @@
 /** Sessão do painel: quem está logado, qual empresa está em foco (seletor da agência). */
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { api, setToken, getToken } from './api.js';
+import { store } from './store.js';
 
 const Ctx = createContext(null);
 const SEL = 'olha.client';
@@ -8,7 +9,7 @@ const SEL = 'olha.client';
 export function AuthProvider({ children }) {
   const [state, setState] = useState({ user: null, clients: [], client: null, ready: false });
   const [selected, setSelected] = useState(() => {
-    const v = localStorage.getItem(SEL);
+    const v = store.get(SEL);
     return v ? Number(v) : null;
   });
 
@@ -31,7 +32,7 @@ export function AuthProvider({ children }) {
   }, [load]);
 
   useEffect(() => {
-    localStorage.setItem(SEL, selected ? String(selected) : '');
+    store.set(SEL, selected ? String(selected) : '');
   }, [selected]);
 
   const login = useCallback(

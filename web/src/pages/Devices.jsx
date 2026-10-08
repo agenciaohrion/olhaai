@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { api, useApi, fmt, DEVICE_TYPES, statusStyle } from '../api.js';
 import { useAuth } from '../auth.jsx';
+import { store } from '../store.js';
 import { useLive } from '../live.js';
 import { Card, Head, Badge, Dot, Btn, IconBtn, Input, Select, Field, Modal, Empty, Loading, cx, toast, Segmented, useAsk, Th, Td, Copy as CopyBox, Meter } from '../ui.jsx';
 
@@ -15,7 +16,7 @@ export default function Devices() {
   const { isAgency, q, body } = useAuth();
   const nav = useNavigate();
   const [params, setParams] = useSearchParams();
-  const [view, setView] = useState(() => localStorage.getItem('olha.view') || 'grid');
+  const [view, setView] = useState(() => store.get('olha.view') || 'grid');
   const [term, setTerm] = useState('');
   const [fType, setFType] = useState('todos');
   const [fStatus, setFStatus] = useState('todos');
@@ -28,7 +29,7 @@ export default function Devices() {
   const locs = useApi(q('/locations'));
   const [ask, askNode] = useAsk();
 
-  useEffect(() => localStorage.setItem('olha.view', view), [view]);
+  useEffect(() => store.set('olha.view', view), [view]);
   useEffect(() => {
     if (params.get('new') === '1') setShowNew(true);
   }, [params]);

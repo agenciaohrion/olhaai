@@ -1,9 +1,11 @@
 /** Cliente HTTP do painel: token, escopo por papel, hooks de dados e tempo real. */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import { store } from './store.js';
+
 const KEY = 'olha.token';
-export const getToken = () => localStorage.getItem(KEY) || '';
-export const setToken = (t) => (t ? localStorage.setItem(KEY, t) : localStorage.removeItem(KEY));
+export const getToken = () => store.get(KEY) || '';
+export const setToken = (t) => (t ? store.set(KEY, t) : store.del(KEY));
 
 export class ApiError extends Error {
   constructor(msg, status) {

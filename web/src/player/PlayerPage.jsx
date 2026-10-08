@@ -5,6 +5,7 @@
  * de horário, responder comandos do painel e reportar telemetria + posição (GPS).
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { store } from '../store.js';
 import { useSearchParams } from 'react-router-dom';
 import Slide from '../Slide.jsx';
 import { Fallback } from '../Slide.jsx';
@@ -18,7 +19,7 @@ const VIDEO_BLOB_MAX = 28 * 1024 * 1024;
 
 const api = async (path, { method = 'GET', body, form, token } = {}) => {
   const headers = {};
-  const t = token || localStorage.getItem(TKEY) || '';
+  const t = token || store.get(TKEY) || '';
   if (t) headers.authorization = `Bearer ${t}`;
   if (body) headers['content-type'] = 'application/json';
   const r = await fetch('/api' + path, { method, headers, body: form ? form : body ? JSON.stringify(body) : undefined });
@@ -33,7 +34,7 @@ const api = async (path, { method = 'GET', body, form, token } = {}) => {
 
 export default function PlayerPage() {
   const [params] = useSearchParams();
-  const [token, setToken] = useState(() => localStorage.getItem(TKEY) || '');
+  const [token, setToken] = useState(() => store.get(TKEY) || '');
   const [phase, setPhase] = useState(token ? 'loading' : 'pair');
   const [manifest, setManifest] = useState(null);
   const [net, setNet] = useState(true);
@@ -69,8 +70,8 @@ export default function PlayerPage() {
         geo: geo || undefined,
       };
       const r = await api('/player/pair', { method: 'POST', body: { code: code.trim().toUpperCase(), info }, token: '' });
-      localStorage.setItem(TKEY, r.token);
-      localStorage.setItem(DKEY, JSON.stringify({ id: r.device.id, name: r.device.name, code }));
+      store.set(TKEY, r.token);
+      store.set(DKEY, JSON.stringify({ id: r.device.id, name: r.device.name, code }));
       setToken(r.token);
       setManifest(r.manifest);
       hashRef.current = r.manifest.hash;
@@ -83,8 +84,8 @@ export default function PlayerPage() {
   };
 
   const forget = () => {
-    localStorage.removeItem(TKEY);
-    localStorage.removeItem(DKEY);
+    store.del(TKEY);
+    store.del(DKEY);
     setToken('');
     setPhase('pair');
     setManifest(null);
@@ -103,7 +104,7 @@ export default function PlayerPage() {
         return m;
       } catch (e) {
         if (/401|403|não pareado/i.test(String(e.message))) {
-          localStorage.removeItem(TKEY);
+          store.del(TKEY);
           setToken('');
           setPhase('pair');
           addLog('pareamento revogado — informe o código novamente', 'erro');
@@ -585,7 +586,7 @@ function PairScreen({ onPair, busy, err, params, onForget }) {
           <button onClick={ask} className="flex items-center gap-2 rounded-xl border border-white/12 bg-white/[0.05] px-4 py-3.5 text-[13px] font-semibold text-white/80 transition hover:bg-white/10">
             <MapPin size={14} /> {asked ? (geo ? `GPS ok · ±${Math.round(geo.accuracy)} m` : 'sem GPS (permita a localização)') : 'usar GPS deste tablet'}
           </button>
-          {onForget && localStorage.getItem(TKEY) && (
+          {onForget && store.get(TKEY) && (
             <button onClick={onForget} className="text-[12px] text-white/45 underline">trocar pareamento</button>
           )}
         </div>
