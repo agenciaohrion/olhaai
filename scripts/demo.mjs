@@ -59,10 +59,26 @@ if (!has('data/signage.db')) {
 
 /* 4 · servidor + aparelhos */
 step('4/4', 'subindo painel, API e aparelhos simulados\n');
-const kids = [
-  spawn(process.execPath, ['server/index.js'], { cwd: ROOT, stdio: 'inherit' }),
-  spawn(process.execPath, ['scripts/simulate.mjs'], { cwd: ROOT, stdio: 'inherit' }),
-];
+const kids = [spawn(process.execPath, ['server/index.js'], { cwd: ROOT, stdio: 'inherit' })];
+
+// o simulador precisa da API no ar: esperar o /api/health evita o "fetch failed" na largada
+const waitApi = async (ms = 20_000) => {
+  const stop = Date.now() + ms;
+  while (Date.now() < stop) {
+    try {
+      const r = await fetch(`http://localhost:${PORT}/api/health`);
+      if (r.ok) return true;
+    } catch {}
+    await new Promise((r) => setTimeout(r, 400));
+  }
+  return false;
+};
+
+const sim = async () => {
+  if (await waitApi()) kids.push(spawn(process.execPath, ['scripts/simulate.mjs'], { cwd: ROOT, stdio: 'inherit' }));
+  else console.log('  ! API não respondeu em 20s — rode `npm run simulate` quando ela subir');
+};
+sim();
 const kill = () => kids.forEach((k) => k.kill('SIGTERM'));
 process.on('SIGINT', kill);
 process.on('SIGTERM', kill);

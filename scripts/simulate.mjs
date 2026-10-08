@@ -230,7 +230,13 @@ async function main() {
   let codes = CODES;
   if (!codes.length) {
     // pega todos os aparelhos criados pelo seed, com o código de pareamento
-    const admin = await api('/api/auth/login', { method: 'POST', body: { email: 'admin@olha.ai', password: 'olha12345' } });
+    let admin = null;
+    for (let i = 0; i < 20 && !admin; i++) {
+      // a API pode estar subindo junto (npm run demo): tente de novo em vez de morrer
+      admin = await api('/api/auth/login', { method: 'POST', body: { email: 'admin@olha.ai', password: 'olha12345' } }).catch(() => null);
+      if (!admin) await new Promise((r) => setTimeout(r, 700));
+    }
+    if (!admin) throw new Error(`não consegui entrar em ${BASE} — a API está no ar? (npm start)`);
     const devs = await api('/api/devices', { token: admin.token });
     codes = devs.map((d) => d.pairing_code);
   }
