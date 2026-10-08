@@ -6,17 +6,37 @@ Inspirado no fluxo de produtos como o Climb Player — gestão centralizada, aut
 
 ---
 
-## Como usar em 3 comandos
+## Como rodar
+
+Precisa de **Node 22.5+** (verifique com `node -v`). Baixe em <https://nodejs.org> se for menor.
+
+```bash
+npm run demo
+```
+
+Um comando só: instala o que faltar, compila o painel, cria a base de demonstração (agência +
+3 empresas, pontos com coordenadas, peças, grades e histórico) e sobe a API com **8 aparelhos
+simulados** transmitindo. Aí é só abrir <http://localhost:4000> — na tela de login existem botões
+de acesso rápido para o console da agência e para o portal do cliente.
+
+```bash
+npm run demo:fresh   # do zero: limpa a base e recria a demonstração
+```
+
+Se preferir fazer no seu ritmo:
 
 ```bash
 npm install
-npm run seed     # cria agência + 3 empresas cliente, pontos com coordenadas, telas, peças e grades
-npm run build && npm start
+npm run seed                       # dados de demonstração (agência + 3 clientes + telas + grades)
+npm run build && npm start         # painel + API + player em http://localhost:4000
+npm run simulate                   # em outro terminal: aparelhos falsos (GPS, capturas, playlog)
 ```
 
 - painel: <http://localhost:4000>
-- player da tela: <http://localhost:4000/player>
+- player da tela: <http://localhost:4000/player> (código de pareamento `OLHA101`)
 - API: <http://localhost:4000/api/health>
+
+> Windows: os mesmos comandos funcionam no PowerShell. Se o `npm` reclamar de script, use `npm.cmd run demo`.
 
 | acesso | login | senha | o que faz |
 | --- | --- | --- | --- |

@@ -8,6 +8,8 @@
     "dev": "concurrently -n api,web -c cyan,magenta \"node server/index.js\" \"vite --config web/vite.config.js\"",
     "build": "vite build --config web/vite.config.js",
     "start": "node server/index.js",
+    "demo": "node scripts/demo.mjs",
+    "demo:fresh": "node scripts/demo.mjs --fresh",
     "seed": "node server/seed.js",
     "simulate": "node scripts/simulate.mjs",
     "test": "node scripts/smoke.mjs",
