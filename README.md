@@ -38,6 +38,17 @@ npm run simulate                   # em outro terminal: aparelhos falsos (GPS, c
 
 > Windows: os mesmos comandos funcionam no PowerShell. Se o `npm` reclamar de script, use `npm.cmd run demo`.
 
+### problemas comuns
+
+| sintoma | causa e saída |
+| --- | --- |
+| `'vite' não é reconhecido…` ou `Cannot find package 'express'` | o `npm install` não rodou (ou rodou pela metade). Rode de novo na pasta do projeto |
+| navegador não abre `http://localhost:4000` | o servidor não está rodando (veja a janela do `npm start`) ou a porta está ocupada — o servidor agora avisa `✗ a porta 4000 já está em uso` e sugere `$env:PORT=4100; npm start` |
+| `Cannot find module 'node:sqlite'` | Node abaixo de 22.5 → instale o LTS atual |
+| telas todas offline | falta o simulador (`npm run simulate`) ou nenhum aparelho pareou ainda em `/player` |
+| mapa/clima/manchetes em branco | precisam de internet no **navegador**; em rede isolada aparece o estado guardado por último |
+
+
 | acesso | login | senha | o que faz |
 | --- | --- | --- | --- |
 | **agência (você)** | `admin@olha.ai` | `olha12345` | todas as empresas, biblioteca comum, planos, acessos, mapa e relatórios consolidados |

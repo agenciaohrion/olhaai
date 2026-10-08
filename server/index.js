@@ -2,6 +2,7 @@ import express from 'express';
 import path from 'node:path';
 import fs from 'node:fs';
 import http from 'node:http';
+import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { UPLOAD_DIR, ROOT, get, all, run } from './db.js';
 import { requireUser } from './auth.js';
@@ -112,18 +113,53 @@ try {
 const server = http.createServer(app);
 const rt = attachRealtime(server);
 
-server.listen(PORT, '0.0.0.0', () => {
-  const links = [
-    ['Painel (agência + cliente)', `http://localhost:${PORT}/`],
-    ['Player (TV / tablet)', `http://localhost:${PORT}/player`],
-    ['API health', `http://localhost:${PORT}/api/health`],
-  ];
-  console.log('\n  OLHA.AI · Marketing Indoor — servidor pronto');
-  for (const [k, v] of links) console.log(`   ${k.padEnd(26)} ${v}`);
-  const users = get("SELECT COUNT(*) n FROM users");
-  if (!users.n) console.log('\n   Banco vazio → rode:  npm run seed');
-  console.log('');
-});
+/**
+ * Escuta em todas as interfaces. `undefined` = dual-stack (:: aceita IPv4 e IPv6),
+ * porque no Windows o navegador resolve "localhost" para ::1 primeiro e, escutando
+ * só em IPv4, a página simplesmente não abre. Se a máquina não tiver IPv6, caímos
+ * para 0.0.0.0. OLHA_HOST força um endereço (ex.: OLHA_HOST=127.0.0.1).
+ */
+function listen(hosts) {
+  const [host, ...rest] = hosts;
+  server.once('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`\n  ✗ a porta ${PORT} já está em uso. Feche o outro servidor ou rode com outra porta:`);
+      console.error(`      PowerShell:  $env:PORT=4100; npm start`);
+      console.error(`      Linux/Mac:   PORT=4100 npm start\n`);
+      process.exit(1);
+    }
+    if (!rest.length) {
+      console.error('\n  ✗ não consegui abrir o servidor:', err.message, '\n');
+      process.exit(1);
+    }
+    try {
+      server.close();
+    } catch {}
+    listen(rest);
+  });
+  server.listen(PORT, host, () => {
+    const links = [
+      ['Painel (agência + cliente)', `http://localhost:${PORT}/`],
+      ['Player (TV / tablet)', `http://localhost:${PORT}/player`],
+      ['API health', `http://localhost:${PORT}/api/health`],
+    ];
+    const ip = lanAddress();
+    if (ip) links.push(['Na rede local (TV/celular)', `http://${ip}:${PORT}/`]);
+    console.log('\n  OLHA.AI · Marketing Indoor — servidor pronto');
+    for (const [k, v] of links) console.log(`   ${k.padEnd(26)} ${v}`);
+    const users = get("SELECT COUNT(*) n FROM users");
+    if (!users.n) console.log('\n   Banco vazio → rode:  npm run seed');
+    console.log('');
+  });
+}
+
+function lanAddress() {
+  for (const list of Object.values(os.networkInterfaces()))
+    for (const n of list || []) if (n.family === 'IPv4' && !n.internal) return n.address;
+  return null;
+}
+
+listen(process.env.OLHA_HOST ? [process.env.OLHA_HOST] : [undefined, '0.0.0.0']);
 
 process.on('SIGTERM', () => server.close(() => process.exit(0)));
 process.on('SIGINT', () => server.close(() => process.exit(0)));
