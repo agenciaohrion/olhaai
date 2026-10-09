@@ -36,7 +36,14 @@ npm run simulate                   # em outro terminal: aparelhos falsos (GPS, c
 - player da tela: <http://localhost:4000/player> (código de pareamento `OLHA101`)
 - API: <http://localhost:4000/api/health>
 
-> Windows: os mesmos comandos funcionam no PowerShell. Se o `npm` reclamar de script, use `npm.cmd run demo`.
+> **Windows — um arquivo só, sem digitar nada:** `demo-windows.ps1` na raiz do projeto instala, compila,
+> cria os dados, sobe a API + os aparelhos simulados em janelas próprias e **abre o navegador sozinho**.
+> ```powershell
+> powershell -ExecutionPolicy Bypass -File .\demo-windows.ps1
+> ```
+> Ele também avisa se o Node for velho ou se o `npm install` falhou — os dois motivos clássicos de "tela preta".
+
+Os mesmos comandos funcionam no PowerShell em qualquer ordem; se o `npm` reclamar de política de script, use `npm.cmd run demo`.
 
 ### problemas comuns
 

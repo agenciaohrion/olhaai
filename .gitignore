@@ -7,3 +7,6 @@ uploads/
 .env
 web/dist/
 server/.tmp/
+
+# imagens de demonstração geradas localmente (.preview-panorama.png etc.)
+.preview-*
