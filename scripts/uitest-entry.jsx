@@ -1,22 +1,14 @@
-/** Entry usado pelo scripts/uitest.mjs: monta o App dentro do jsdom sob uma rota dada. */
+/** Entry usado pelo scripts/uitest.mjs: monta a MESMA árvore que o navegador monta (root.jsx). */
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import { MemoryRouter } from 'react-router-dom';
-import { AuthProvider } from '../web/src/auth.jsx';
-import App from '../web/src/App.jsx';
+import Root from '../web/src/root.jsx';
 
 window.__olhaTest = {
   render(route) {
     const el = document.getElementById('root');
     el.innerHTML = '';
     const root = createRoot(el);
-    root.render(
-      React.createElement(
-        MemoryRouter,
-        { initialEntries: [route] },
-        React.createElement(AuthProvider, null, React.createElement(App))
-      )
-    );
+    root.render(React.createElement(React.StrictMode, null, React.createElement(Root, { route })));
     return new Promise((r) => setTimeout(r, 0));
   },
 };

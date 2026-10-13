@@ -145,6 +145,20 @@ async function main() {
     if (hardErrors.length) line('       ↳ ' + hardErrors.slice(0, 4).join('\n       ↳ '));
   }
 
+  // nenhuma rota pode quebrar sem sessão — foi assim que um AuthProvider esquecido
+  // no main.jsx derrubava o painel inteiro no navegador (e o teste não via)
+  line('\n▶ sem sessão (usuário deslogado)');
+  {
+    const broken = [];
+    for (const r of ROUTES) {
+      const { text } = await render(code, r.path, null);
+      if (text.includes('Uma tela quebrou') || text.length < 40) broken.push(`${r.path} (${text.length})`);
+    }
+    const ok = !broken.length;
+    if (!ok) fail++;
+    line(`  ${ok ? '✅' : '❌'} nenhuma rota quebra sem login${broken.length ? ' — quebraram: ' + broken.join(', ') : ''}`);
+  }
+
   // portal do cliente: não pode ver gestão de empresas nem dados de terceiros
   line('\n▶ isolamento do cliente');
   {
