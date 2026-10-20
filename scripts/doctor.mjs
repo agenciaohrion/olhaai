@@ -61,7 +61,11 @@ if (has(path.join('data', 'signage.db'))) {
     const db = new DatabaseSync(path.join(ROOT, 'data', 'signage.db'));
     const users = db.prepare('SELECT COUNT(*) n FROM users').get().n;
     const devices = db.prepare('SELECT COUNT(*) n FROM devices').get().n;
-    users ? pass(`${users} acesso(s), ${devices} tela(s) cadastradas`) : fail('o banco está vazio', 'rode:  npm run seed');
+    // `npm start` sozinho cria o arquivo com as tabelas e zero acessos — é assim que se
+    // chega num painel bonito onde "ninguém consegue entrar".
+    users
+      ? pass(`${users} acesso(s), ${devices} tela(s) cadastradas`)
+      : fail('banco sem nenhum acesso (foi só o `npm start` que criou o arquivo)', 'rode:  node server/seed.js');
     db.close();
   } catch (e) {
     fail('não consegui ler o banco: ' + e.message, 'feche o servidor e rode:  npm run seed');

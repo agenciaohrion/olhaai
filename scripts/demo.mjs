@@ -33,6 +33,9 @@ const line = (s) => console.log(`     ${s}`);
 function fail(what, r) {
   console.error(`\n  ✗ ${what} falhou${r && r.status != null ? ` (código ${r.status})` : ''}`);
   if (r && r.error) console.error(`     ${r.error.message}`);
+  // status null sem error = o filho não pôde ser lançado: no Windows é o npm/.cmd
+  // chamado sem shell (Node 22 recusa). Quem lê "código null" precisa saber disso.
+  if (r && r.status === null && !r.error) console.error('     o comando não pôde ser iniciado — no Windows isso é o npm (.cmd) chamado sem shell; rode o comando à mão no PowerShell');
   console.error('\n     Você pode fazer no braço, um por um:\n');
   console.error('       npm install');
   console.error('       npm run build');
@@ -77,10 +80,17 @@ if (FRESH || !has('web/dist/index.html')) {
    login morto. Quem decide é o seed: com base populada ele sai na frente, vazia ele preenche. */
 const dbExists = has(path.join('data', 'signage.db'));
 step('3/4', FRESH ? 'recriando a base do zero (--fresh)' : dbExists ? 'base existe — seed decide se falta algo' : 'criando a base de demonstração');
+let seedFailed = false;
 {
   const args = [path.join('server', 'seed.js'), ...(FRESH ? [] : ['--keep'])];
   const r = runNode(args);
-  if (r.status !== 0) fail('seed', r);
+  if (r.status !== 0) {
+    seedFailed = true;
+    console.error('\n  ⚠ o seed não rodou — a demo sobe mesmo assim, mas sem dados, e aí');
+    console.error('     nenhum login entra (o painel avisa isso na própria tela de entrada).');
+    console.error('     para criar a demonstração com o painel no ar:  node server' + (IS_WIN ? '\\' : '/') + 'seed.js');
+    console.error('     depois é só recarregar o navegador.\n');
+  }
 }
 
 /* 4 · servidor + aparelhos */
@@ -111,7 +121,7 @@ console.log(`
 
    login da agência   admin@olha.ai            olha12345
    login do cliente   ju@fitmoveis.com.br      cliente123
-
+${seedFailed ? '\n   ⚠ SEM DADOS  →  node server/seed.js   (senão o login não tem quem entrar)\n' : ''}
    Ctrl+C aqui para parar tudo
   ─────────────────────────────────────────────────────────
 `);
