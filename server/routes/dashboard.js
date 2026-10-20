@@ -56,7 +56,8 @@ router.get(
       role: req.user.role,
       client_id: cid,
       counts: {
-        clients: get('SELECT COUNT(*) n FROM clients').n,
+        // o tamanho da carteira da agência não é informação do cliente
+        clients: req.user.role === 'agency' ? get('SELECT COUNT(*) n FROM clients').n : 1,
         locations: get(`SELECT COUNT(*) n FROM locations ${where(cid)}`, p).n,
         media: get(`SELECT COUNT(*) n FROM media ${cid ? 'WHERE client_id=? OR public=1' : 'WHERE 1=1'}`, cid ? [cid] : []).n,
         playlists: get(`SELECT COUNT(*) n FROM playlists ${where(cid)}`, p).n,
