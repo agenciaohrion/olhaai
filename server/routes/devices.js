@@ -4,7 +4,7 @@ import { all, get, insert, update, del, audit, nowISO } from '../db.js';
 import { requireUser, guardRow, randomCode, randomToken } from '../auth.js';
 import { wrap, bad, pick, safeUnlink } from '../lib.js';
 import { resolveProgram, dayTimeline } from '../program.js';
-import { isOnline, remoteAction } from '../realtime.js';
+import { isOnline, remoteAction, dropQueue } from '../realtime.js';
 
 export const router = express.Router(); // exige login (montado dentro do bloco autenticado)
 
@@ -141,6 +141,7 @@ router.delete(
     const d = guardRow(req, get('SELECT * FROM devices WHERE id=?', [req.params.id]));
     for (const s of all('SELECT filename FROM screenshots WHERE device_id=?', [d.id])) safeUnlink(path.join('uploads', 'shots', s.filename));
     del('devices', d.id);
+    dropQueue(d.id);
     audit({ user_id: req.user.id, actor: req.user.email, action: 'device:delete', entity: 'device', entity_id: d.id, client_id: d.client_id, detail: d.name });
     res.json({ ok: true });
   })

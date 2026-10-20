@@ -72,14 +72,12 @@ if (FRESH || !has('web/dist/index.html')) {
 }
 
 /* 3 · dados de demonstração */
-if (!has('data/signage.db')) {
-  step('3/4', 'criando a base de demonstração');
+if (FRESH || !has(path.join('data', 'signage.db'))) {
+  step('3/4', FRESH ? 'recriando a base do zero (--fresh)' : 'criando a base de demonstração');
   const r = runNode([path.join('server', 'seed.js')]);
   if (r.status !== 0) fail('seed', r);
 } else {
-  step('3/4', FRESH ? 'recriando a base do zero (--fresh)' : 'base já existe — completando o que falta');
-  const r = runNode([path.join('server', 'seed.js'), ...(FRESH ? [] : ['--keep'])]);
-  if (r.status !== 0) fail('seed', r);
+  step('3/4', 'base já existe — mantendo seus dados (use demo:fresh para recriar)');
 }
 
 /* 4 · servidor + aparelhos */

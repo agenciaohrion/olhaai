@@ -51,6 +51,12 @@ export function hasDeviceSocket(deviceId) {
   return !!set && set.size > 0;
 }
 
+/** Esquece o que estava na fila de um aparelho (usado quando ele é removido, senão
+    o comando fica pendurado na memória para sempre apontando para um id morto). */
+export function dropQueue(deviceId) {
+  commandQueue.delete(Number(deviceId));
+}
+
 export function drainCommands(deviceId) {
   const q = commandQueue.get(deviceId) || [];
   commandQueue.set(deviceId, []);

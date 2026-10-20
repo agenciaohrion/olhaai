@@ -271,6 +271,8 @@ async function main() {
   await call(`/api/devices/${devId}`, { method: 'DELETE', token: C });
   await call(`/api/playlists/${plId}`, { method: 'DELETE', token: C });
   await call(`/api/media/${widgetId}?force=1`, { method: 'DELETE', token: C });
+  // a imagem enviada fica presa na biblioteca do cliente 1 se não for apagada aqui
+  await call(`/api/media/${mediaId}?force=1`, { method: 'DELETE', token: C });
   await call(`/api/locations/${locId}`, { method: 'DELETE', token: C });
   const gone = await call(`/api/devices/${devId}`, { token: C });
   ok('remoção em cascata limpa os testes', gone.status === 404);

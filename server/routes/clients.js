@@ -1,5 +1,6 @@
 import express from 'express';
 import { all, get, insert, update, del, audit } from '../db.js';
+import { dropQueue } from '../realtime.js';
 import { requireUser, visible, guardRow, hashPass } from '../auth.js';
 import { wrap, bad, pick } from '../lib.js';
 
@@ -92,7 +93,9 @@ router.delete(
   wrap((req, res) => {
     const c = guardClient(req, get('SELECT * FROM clients WHERE id=?', [req.params.id]));
     if (req.user.role !== 'agency') bad(403, 'apenas a agência remove empresas');
+    const devs = all('SELECT id FROM devices WHERE client_id=?', [c.id]);
     del('clients', c.id);
+    for (const d of devs) dropQueue(d.id); // a fila em memória não sabe de cascata
     audit({ user_id: req.user.id, actor: req.user.email, action: 'client:delete', entity: 'client', entity_id: c.id, detail: c.name });
     res.json({ ok: true });
   })

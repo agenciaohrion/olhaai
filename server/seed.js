@@ -176,7 +176,19 @@ const COMPANIES = [
 
 /* ---------------------------------- seed ---------------------------------- */
 
-if (!KEEP) reset();
+if (!KEEP) {
+  reset();
+} else {
+  // `--keep` só faz sentido em base vazia: as empresas têm guarda, mas pontos, telas,
+  // peças e grades não — rodar de novo em base cheia duplicaria tudo antes de esbarrar
+  // no UNIQUE de users.email. Então avisamos e saímos sem escrever nada.
+  const n = get('SELECT COUNT(*) n FROM clients').n;
+  if (n) {
+    console.log(`\n  Base já populada (${n} empresa(s)) — nada a completar com --keep.`);
+    console.log('  Para recriar a demonstração do zero:  npm run seed\n');
+    process.exit(0);
+  }
+}
 
 console.log('1/6 · acessos');
 const agencyId = insert('users', {
