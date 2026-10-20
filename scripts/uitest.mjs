@@ -111,6 +111,13 @@ async function render(code, route, token, opts = {}) {
     clientHeight: { get: () => 800, configurable: true },
   });
 
+  if (opts.hostileStorage) {
+    // navegador que finge funcionar: getItem devolve null e setItem não persiste
+    const P = w.Storage.prototype;
+    P.setItem = () => {};
+    P.getItem = () => null;
+    P.removeItem = () => {};
+  }
   w.eval(code);
   await w.__olhaTest.render(route);
   await new Promise((r) => setTimeout(r, 900));
@@ -222,6 +229,29 @@ async function main() {
     const ok4 = tokLen > 40;
     if (!ok4) fail++;
     line(`  ${ok4 ? '✅' : '❌'} sessão gravada após o login (${tokLen} chars)`);
+    dom.window.close();
+  }
+
+  line('\n▶ login num navegador que bloqueia armazenamento');
+  {
+    const { w, dom } = await render(code, '/login', null, { keep: true, hostileStorage: true });
+    const doc = w.document;
+    const tick = (ms) => new Promise((r) => setTimeout(r, ms));
+    const set = (el, v) => {
+      Object.getOwnPropertyDescriptor(w.HTMLInputElement.prototype, 'value').set.call(el, v);
+      el.dispatchEvent(new w.Event('input', { bubbles: true }));
+    };
+    await tick(700);
+    set(doc.querySelector('input[autocomplete="username"]'), 'ju@fitmoveis.com.br');
+    set(doc.querySelector('input[type="password"]'), 'cliente123');
+    await tick(80);
+    [...doc.querySelectorAll('button')].find((b) => /entrar no painel/.test(b.textContent || ''))?.click();
+    await tick(1500);
+    const txt = (doc.getElementById('root').textContent || '').replace(/\s+/g, ' ').trim();
+    const entrou = /Visão geral/.test(txt) && !/não guardou o token|não montou/.test(txt);
+    if (!entrou) fail++;
+    line(`  ${entrou ? '✅' : '❌'} a sessão sobrevive no histórico da aba com localStorage bloqueado`);
+    if (!entrou) line('       texto: ' + JSON.stringify(txt.slice(0, 300)));
     dom.window.close();
   }
 

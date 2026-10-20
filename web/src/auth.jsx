@@ -16,16 +16,18 @@ export function AuthProvider({ children }) {
   const load = useCallback(async () => {
     if (!getToken()) {
       setState((s) => ({ ...s, ready: true }));
-      return null;
+      return { user: null, why: 'sem token neste navegador' };
     }
     try {
       const d = await api('/auth/me', { quiet: true });
-      setState({ user: d.user, clients: d.clients || [], client: d.client, ready: true });
-      return d.user || null;
-    } catch {
+      // servidores mais velhos devolviam o usuário no nível de cima
+      const u = d?.user || (d && d.email ? d : null);
+      setState({ user: u, clients: d?.clients || [], client: d?.client, ready: true });
+      return { user: u || null, why: u ? '' : 'a API respondeu sem usuário' };
+    } catch (e) {
       setToken('');
       setState({ user: null, clients: [], client: null, ready: true });
-      return null;
+      return { user: null, why: e?.message || 'a API recusou a sessão' };
     }
   }, []);
 
@@ -47,9 +49,10 @@ export function AuthProvider({ children }) {
       // com status 200, não existe token, e o redirecionamento cai de volta no /login.
       if (!d || !d.token) throw new ApiError('a API respondeu sem token — o painel não está falando com o servidor (rode npm run demo)', 0);
       setToken(d.token);
-      const me = await load();
-      if (!me) throw new ApiError('login aceito, mas a sessão não montou (rode npm run doctor)', 0);
-      return me;
+      if (!getToken()) throw new ApiError('o navegador não guardou o token — dados/cookies deste site estão bloqueados; libere o armazenamento para este endereço', 0);
+      const r = await load();
+      if (!r.user) throw new ApiError(`login aceito, mas a sessão não montou: ${r.why}`, 0);
+      return r.user;
     },
     [load]
   );
@@ -76,6 +79,8 @@ export function AuthProvider({ children }) {
     login,
     logout,
     refresh: load,
+    /** false quando o navegador recusa guardar dados deste site */
+    persistent: store.persistent,
     /** anexa client_id quando a agência filtrou uma empresa */
     q: (path = '') => {
       if (role !== 'agency' || !focus) return path;

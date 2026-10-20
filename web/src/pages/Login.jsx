@@ -47,7 +47,7 @@ function useApiProbe() {
 }
 
 export default function Login() {
-  const { login } = useAuth();
+  const { login, persistent } = useAuth();
   const nav = useNavigate();
   const [email, setEmail] = useState('');
   const [pass, setPass] = useState('');
@@ -161,6 +161,12 @@ export default function Login() {
                 <RefreshCw size={13} /> verificar de novo
               </button>
             </div>
+          ) : null}
+
+          {persistent === false ? (
+            <p className="mt-4 rounded-xl border border-line bg-white/[0.03] px-3 py-2 text-[11.5px] leading-snug text-mute">
+              Seu navegador não está deixando guardar dados deste site — a sessão vai durar enquanto esta aba estiver aberta. Para fixá-la, libere cookies/armazenamento para este endereço.
+            </p>
           ) : null}
 
           <form onSubmit={submit} className="mt-6 space-y-3.5">
