@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, Lock, Mail, ArrowRight, Tv, MapPin, Radio, ShieldCheck, Zap } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail, ArrowRight, Tv, MapPin, Radio, ShieldCheck, Zap, TriangleAlert, RefreshCw } from 'lucide-react';
 import { useAuth } from '../auth.jsx';
 import { Btn, Field, Input, toast, cx } from '../ui.jsx';
 
@@ -10,6 +10,42 @@ const DEMOS = [
   { role: 'Portal do cliente', email: 'ju@fitmoveis.com.br', pass: 'cliente123', hint: 'Rede Fit Movel · grade de aulas' },
 ];
 
+/**
+ * Sonda a API antes de a pessoa tentar entrar.
+ *
+ * Sem isso, um `npm start` sem `npm run seed` (ou sem servidor) transformava o clique em
+ * "não entra" — um erro que mora num toast de 4 segundos no canto da tela. Aqui a causa
+ * vira uma frase com o comando que resolve, e um botão para conferir de novo sem recarregar.
+ */
+function useApiProbe() {
+  const [probe, setProbe] = useState({ state: 'checking' });
+  const tries = useRef(0);
+
+  const run = useCallback(async () => {
+    try {
+      const r = await fetch('/api/health', { headers: { accept: 'application/json' } });
+      const d = await r.json();
+      // `users` ausente = API mais antiga que este aviso: não temos direito de acusar a base
+      const knows = d && typeof d.users === 'number';
+      setProbe({ state: !knows || d.users > 0 ? 'ok' : 'empty', users: d?.users, clients: d?.clients });
+    } catch {
+      setProbe({ state: 'down' });
+    }
+  }, []);
+
+  useEffect(() => {
+    run();
+    if (probe.state === 'ok') return;
+    const t = setInterval(() => {
+      if (tries.current++ > 60) return clearInterval(t);
+      run();
+    }, 3000);
+    return () => clearInterval(t);
+  }, [probe.state, run]);
+
+  return [probe, run];
+}
+
 export default function Login() {
   const { login } = useAuth();
   const nav = useNavigate();
@@ -17,20 +53,44 @@ export default function Login() {
   const [pass, setPass] = useState('');
   const [show, setShow] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const [probe, reprobe] = useApiProbe();
 
-  const submit = async (e) => {
+  const enter = useCallback(
+    async (mail, senha) => {
+      setBusy(true);
+      setErr('');
+      try {
+        const u = await login(mail, senha);
+        // o nome pode faltar em resposta estranha: isso nunca pode segurar o redirecionamento
+        toast(`bem-vindo, ${u?.name?.split(' ')[0] || 'time'} 👋`, 'ok', 2200);
+        nav('/', { replace: true });
+        return true;
+      } catch (e) {
+        const msg = e?.message || 'não foi possível entrar';
+        setErr(msg);
+        toast(msg, 'err', 6000);
+        if (/não respondeu|sem token/i.test(msg)) reprobe();
+        return false;
+      } finally {
+        setBusy(false);
+      }
+    },
+    [login, nav, reprobe]
+  );
+
+  const submit = (e) => {
     e.preventDefault();
-    setBusy(true);
-    try {
-      const u = await login(email.trim(), pass);
-      toast(`bem-vindo, ${u.name.split(' ')[0]} 👋`, 'ok', 2200);
-      nav('/', { replace: true });
-    } catch (err) {
-      toast(err.message || 'não foi possível entrar', 'err', 5000);
-    } finally {
-      setBusy(false);
-    }
+    enter(email.trim(), pass);
   };
+
+  const useDemo = (d) => {
+    setEmail(d.email);
+    setPass(d.pass);
+    enter(d.email, d.pass);
+  };
+
+  const blocked = probe.state === 'down' || probe.state === 'empty';
 
   return (
     <div className="relative grid min-h-screen lg:grid-cols-[1.05fr_1fr]">
@@ -82,6 +142,27 @@ export default function Login() {
           <h2 className="font-[var(--font-display)] text-[22px] font-bold tracking-tight">Entrar no painel</h2>
           <p className="mt-1 text-[12.5px] text-mute">Agência e clientes usam o mesmo endereço, com permissões diferentes.</p>
 
+          {/* o motivo honesto de "clico e não entra", antes de a pessoa tentar */}
+          {probe.state === 'checking' ? null : blocked ? (
+            <div className="mt-5 rounded-2xl border border-warn/45 bg-warn/10 p-3.5">
+              <p className="flex items-center gap-2 text-[12.5px] font-bold text-warn">
+                <TriangleAlert size={14} />
+                {probe.state === 'down' ? 'A API não respondeu neste endereço' : 'O banco está sem acessos cadastrados'}
+              </p>
+              <p className="mt-1.5 text-[12px] leading-relaxed text-mute">
+                {probe.state === 'down'
+                  ? 'O painel abriu, mas o /api/health não respondeu — o servidor não está rodando (ou está em outra porta).'
+                  : `A API está no ar, com ${probe.clients} empresa(s) e nenhum acesso. Falta criar os dados de demonstração.`}
+              </p>
+              <p className="mt-2 overflow-x-auto rounded-lg border border-line bg-ink2/80 px-2.5 py-1.5 font-mono text-[11.5px] whitespace-nowrap text-fg/90">
+                npm run demo
+              </p>
+              <button type="button" onClick={reprobe} className="mt-2.5 inline-flex items-center gap-1.5 text-[12px] font-bold text-brand hover:underline">
+                <RefreshCw size={13} /> verificar de novo
+              </button>
+            </div>
+          ) : null}
+
           <form onSubmit={submit} className="mt-6 space-y-3.5">
             <Field label="e-mail">
               <div className="relative">
@@ -114,8 +195,17 @@ export default function Login() {
                 </button>
               </div>
             </Field>
+
+            {/* o erro fica preso no formulário — não só no toast que some */}
+            {err ? (
+              <p role="alert" className="flex items-start gap-2 rounded-xl border border-err/45 bg-err/10 px-3 py-2 text-[12.5px] leading-snug text-err">
+                <TriangleAlert size={14} className="mt-0.5 shrink-0" />
+                <span>{err}</span>
+              </p>
+            ) : null}
+
             <Btn type="submit" variant="primary" size="lg" className="w-full" loading={busy} icon={ArrowRight}>
-              entrar no painel
+              {busy ? 'entrando…' : 'entrar no painel'}
             </Btn>
           </form>
 
@@ -125,11 +215,10 @@ export default function Login() {
               {DEMOS.map((d) => (
                 <button
                   key={d.email}
-                  onClick={() => {
-                    setEmail(d.email);
-                    setPass(d.pass);
-                  }}
-                  className="group flex w-full items-center gap-3 rounded-xl border border-transparent bg-ink2/70 px-3 py-2.5 text-left transition hover:border-brand/40"
+                  type="button"
+                  disabled={busy}
+                  onClick={() => useDemo(d)}
+                  className="group flex w-full items-center gap-3 rounded-xl border border-transparent bg-ink2/70 px-3 py-2.5 text-left transition hover:border-brand/40 disabled:opacity-50"
                 >
                   <span className={cx('grid h-7 w-7 shrink-0 place-items-center rounded-lg text-[10px] font-bold', d.role.includes('agência') ? 'bg-brand/20 text-brand' : 'bg-brand2/15 text-brand2')}>
                     {d.role.includes('agência') ? 'AG' : 'CL'}
@@ -142,7 +231,9 @@ export default function Login() {
                 </button>
               ))}
             </div>
-            <p className="mt-2.5 text-[11px] leading-snug text-mute/80">Clique para preencher. O cliente {DEMOS[1].hint}.</p>
+            <p className="mt-2.5 text-[11px] leading-snug text-mute/80">
+              Um clique já preenche e entra. {probe.state === 'ok' ? '' : 'Se falhar, o motivo aparece acima do botão.'}
+            </p>
           </div>
 
           <p className="mt-5 text-center text-[12px] text-mute">

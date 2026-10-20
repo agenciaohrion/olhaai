@@ -38,7 +38,15 @@ app.use((req, res, next) => {
 
 const api = express.Router();
 api.get('/health', (req, res) => {
-  res.json({ ok: true, at: new Date().toISOString(), devices: get("SELECT COUNT(*) n FROM devices WHERE status='online'").n });
+  // `users`/`clients` existem para a tela de login conseguir dizer "o banco está vazio"
+  // em vez de deixar a pessoa batendo em Entrar sem resposta.
+  res.json({
+    ok: true,
+    at: new Date().toISOString(),
+    devices: get("SELECT COUNT(*) n FROM devices WHERE status='online'").n,
+    users: get('SELECT COUNT(*) n FROM users').n,
+    clients: get('SELECT COUNT(*) n FROM clients').n,
+  });
 });
 
 // rotas públicas: login do painel + API consumida pelo aparelho (token do dispositivo)

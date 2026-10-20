@@ -61,7 +61,7 @@ async function login(email, password) {
   return r.json();
 }
 
-async function render(code, route, token) {
+async function render(code, route, token, opts = {}) {
   const errors = [];
   const vc = new VirtualConsole();
   vc.on('jsdomError', (e) => errors.push('[jsdom] ' + (e.detail?.message || e.message)));
@@ -118,6 +118,7 @@ async function render(code, route, token) {
   const text = (root.textContent || '').replace(/\s+/g, ' ').trim();
   const html = root.innerHTML;
   await new Promise((r) => setTimeout(r, 50));
+  if (opts.keep) return { text, html, errors, w, dom };
   dom.window.close();
   return { text, html, errors };
 }
@@ -157,6 +158,88 @@ async function main() {
     const ok = !broken.length;
     if (!ok) fail++;
     line(`  ${ok ? '✅' : '❌'} nenhuma rota quebra sem login${broken.length ? ' — quebraram: ' + broken.join(', ') : ''}`);
+  }
+
+  /* ---------------- login pelo formulário ----------------
+     O resto do arquivo entra na API direto e injeta o token — ou seja, um formulário
+     de login quebrado passaria em todas as rotas. Aqui é o clique da pessoa, com o
+     React de verdade, sem token nenhum no armazenamento. */
+  line('\n▶ login pelo formulário (clique real)');
+  {
+    const { w, dom } = await render(code, '/login', null, { keep: true });
+    const doc = w.document;
+    const tela = () => (doc.getElementById('root').textContent || '').replace(/\s+/g, ' ').trim();
+    const tick = (ms) => new Promise((r) => setTimeout(r, ms));
+    const set = (el, v) => {
+      Object.getOwnPropertyDescriptor(w.HTMLInputElement.prototype, 'value').set.call(el, v);
+      el.dispatchEvent(new w.Event('input', { bubbles: true }));
+    };
+    const send = () => {
+      const form = doc.querySelector('form');
+      const btn = [...doc.querySelectorAll('button')].find((b) => /entrar no painel/.test(b.textContent || ''));
+      if (form && !form.checkValidity?.()) return 'invalido';
+      if (btn) btn.click();
+      else form?.dispatchEvent(new w.Event('submit', { bubbles: true, cancelable: true }));
+      return 'click';
+    };
+
+    const emailEl = doc.querySelector('input[autocomplete="username"]');
+    const passEl = doc.querySelector('input[type="password"]');
+    const ok1 = !!emailEl && !!passEl;
+    if (!ok1) fail++;
+    line(`  ${ok1 ? '✅' : '❌'} o formulário monta e-mail e senha`);
+
+    await tick(1000);
+    const probeText = tela();
+    const okProbe = !/A API não respondeu|banco está sem acessos/.test(probeText);
+    if (!okProbe) fail++;
+    line(`  ${okProbe ? '✅' : '❌'} a sonda da API não acusa problema em base saudável`);
+
+    // credencial errada: o motivo tem de ficar no formulário, e a pessoa não pode entrar
+    set(emailEl, 'admin@olha.ai');
+    set(passEl, 'senha-trocada');
+    const sent1 = send();
+    await tick(1100);
+    const t1 = tela();
+    const ok2 = sent1 === 'click' && /inválidos|não foi possível/.test(t1) && /acessos de demonstra/.test(t1);
+    if (!ok2) fail++;
+    line(`  ${ok2 ? '✅' : '❌'} senha errada explica o motivo e mantém a pessoa no login`);
+    if (!ok2) line('       texto: ' + JSON.stringify(t1.slice(0, 260)));
+    const noTok = !(w.localStorage.getItem('olha.token') || '');
+    if (!noTok) fail++;
+    line(`  ${noTok ? '✅' : '❌'} senha errada não grava sessão`);
+
+    // credencial certa: um clique e cai na Visão geral
+    set(passEl, 'olha12345');
+    send();
+    await tick(1500);
+    const t2 = tela();
+    const ok3 = /Visão geral/.test(t2) && /telas no ar/i.test(t2) && !/acessos de demonstra/.test(t2);
+    if (!ok3) fail++;
+    line(`  ${ok3 ? '✅' : '❌'} clique em "entrar no painel" leva à Visão geral`);
+    if (!ok3) line('       texto: ' + JSON.stringify(t2.slice(0, 300)));
+    const tokLen = (w.localStorage.getItem('olha.token') || '').length;
+    const ok4 = tokLen > 40;
+    if (!ok4) fail++;
+    line(`  ${ok4 ? '✅' : '❌'} sessão gravada após o login (${tokLen} chars)`);
+    dom.window.close();
+  }
+
+  line('\n▶ login por um clique no cartão de demonstração');
+  {
+    const { w, dom } = await render(code, '/login', null, { keep: true });
+    const doc = w.document;
+    const tick = (ms) => new Promise((r) => setTimeout(r, ms));
+    await tick(900);
+    const card = [...doc.querySelectorAll('button')].find((b) => /Console da ag/.test(b.textContent || ''));
+    if (card) card.click();
+    await tick(1500);
+    const txt = (doc.getElementById('root').textContent || '').replace(/\s+/g, ' ').trim();
+    const ok = !!card && /Visão geral/.test(txt);
+    if (!ok) fail++;
+    line(`  ${ok ? '✅' : '❌'} cartão da agência entra direto (sem segundo clique)`);
+    if (!ok) line('       texto: ' + JSON.stringify(txt.slice(0, 260)));
+    dom.window.close();
   }
 
   // portal do cliente: não pode ver gestão de empresas nem dados de terceiros

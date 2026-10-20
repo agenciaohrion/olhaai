@@ -1,6 +1,6 @@
 /** Sessão do painel: quem está logado, qual empresa está em foco (seletor da agência). */
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { api, setToken, getToken } from './api.js';
+import { api, setToken, getToken, ApiError } from './api.js';
 import { store } from './store.js';
 
 const Ctx = createContext(null);
@@ -14,13 +14,18 @@ export function AuthProvider({ children }) {
   });
 
   const load = useCallback(async () => {
-    if (!getToken()) return setState((s) => ({ ...s, ready: true }));
+    if (!getToken()) {
+      setState((s) => ({ ...s, ready: true }));
+      return null;
+    }
     try {
       const d = await api('/auth/me', { quiet: true });
       setState({ user: d.user, clients: d.clients || [], client: d.client, ready: true });
+      return d.user || null;
     } catch {
       setToken('');
       setState({ user: null, clients: [], client: null, ready: true });
+      return null;
     }
   }, []);
 
@@ -38,9 +43,13 @@ export function AuthProvider({ children }) {
   const login = useCallback(
     async (email, password) => {
       const d = await api('/auth/login', { method: 'POST', body: { email, password } });
+      // sem essa guarda o clique vira "não faz nada": um proxy mal configurado devolve HTML
+      // com status 200, não existe token, e o redirecionamento cai de volta no /login.
+      if (!d || !d.token) throw new ApiError('a API respondeu sem token — o painel não está falando com o servidor (rode npm run demo)', 0);
       setToken(d.token);
-      await load();
-      return d.user;
+      const me = await load();
+      if (!me) throw new ApiError('login aceito, mas a sessão não montou (rode npm run doctor)', 0);
+      return me;
     },
     [load]
   );

@@ -71,13 +71,16 @@ if (FRESH || !has('web/dist/index.html')) {
   step('2/4', 'painel já gerado ✓');
 }
 
-/* 3 · dados de demonstração */
-if (FRESH || !has(path.join('data', 'signage.db'))) {
-  step('3/4', FRESH ? 'recriando a base do zero (--fresh)' : 'criando a base de demonstração');
-  const r = runNode([path.join('server', 'seed.js')]);
+/* 3 · dados de demonstração
+   Cuidado com a tentação de pular o seed quando data/signage.db existe: um `npm start`
+   sozinho cria o arquivo com as tabelas e NENHUM acesso — a demo "existente" ficaria com
+   login morto. Quem decide é o seed: com base populada ele sai na frente, vazia ele preenche. */
+const dbExists = has(path.join('data', 'signage.db'));
+step('3/4', FRESH ? 'recriando a base do zero (--fresh)' : dbExists ? 'base existe — seed decide se falta algo' : 'criando a base de demonstração');
+{
+  const args = [path.join('server', 'seed.js'), ...(FRESH ? [] : ['--keep'])];
+  const r = runNode(args);
   if (r.status !== 0) fail('seed', r);
-} else {
-  step('3/4', 'base já existe — mantendo seus dados (use demo:fresh para recriar)');
 }
 
 /* 4 · servidor + aparelhos */
