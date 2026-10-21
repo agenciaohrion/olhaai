@@ -37,6 +37,23 @@ app.use((req, res, next) => {
 });
 
 const api = express.Router();
+const indexHtmlPath = path.join(DIST, 'index.html');
+/**
+ * Que bundle o painel *deste servidor* está servindo agora. Uma aba antiga carrega um
+ * `index-<hash>.js` de antes do último build — foi assim que uma tela de login já
+ * consertada continuou mostrando o erro velho para o usuário. Comparando os dois, a
+ * interface consegue dizer "existe versão nova, recarregue" em vez de nos deixar
+ * discutindo o que a tela mostra.
+ */
+function servedBundle() {
+  try {
+    const m = fs.readFileSync(indexHtmlPath, 'utf8').match(/assets\/(index-[\w-]+\.js)/);
+    return m ? m[1] : null;
+  } catch {
+    return null;
+  }
+}
+
 api.get('/health', (req, res) => {
   // `users`/`clients` existem para a tela de login conseguir dizer "o banco está vazio"
   // em vez de deixar a pessoa batendo em Entrar sem resposta.
@@ -46,6 +63,7 @@ api.get('/health', (req, res) => {
     devices: get("SELECT COUNT(*) n FROM devices WHERE status='online'").n,
     users: get('SELECT COUNT(*) n FROM users').n,
     clients: get('SELECT COUNT(*) n FROM clients').n,
+    bundle: servedBundle(),
   });
 });
 

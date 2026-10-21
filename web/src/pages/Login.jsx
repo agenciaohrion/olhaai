@@ -17,8 +17,18 @@ const DEMOS = [
  * "não entra" — um erro que mora num toast de 4 segundos no canto da tela. Aqui a causa
  * vira uma frase com o comando que resolve, e um botão para conferir de novo sem recarregar.
  */
+/** Que bundle esta página carregou (null quando não dá para saber, ex.: teste). */
+const loadedBundle = () => {
+  try {
+    const src = [...document.querySelectorAll('script[src]')].map((n) => n.getAttribute('src') || '').find((v) => /index-[\w-]+\.js/.test(v));
+    return src ? src.match(/index-[\w-]+\.js/)[0] : null;
+  } catch {
+    return null;
+  }
+};
+
 function useApiProbe() {
-  const [probe, setProbe] = useState({ state: 'checking' });
+  const [probe, setProbe] = useState({ state: 'checking', mine: loadedBundle() });
   const tries = useRef(0);
 
   const run = useCallback(async () => {
@@ -27,7 +37,15 @@ function useApiProbe() {
       const d = await r.json();
       // `users` ausente = API mais antiga que este aviso: não temos direito de acusar a base
       const knows = d && typeof d.users === 'number';
-      setProbe({ state: !knows || d.users > 0 ? 'ok' : 'empty', users: d?.users, clients: d?.clients });
+      const mine = loadedBundle();
+      setProbe({
+        state: !knows || d.users > 0 ? 'ok' : 'empty',
+        users: d?.users,
+        clients: d?.clients,
+        mine,
+        stale: !!(d?.bundle && mine && d.bundle !== mine),
+        theirs: d?.bundle || null,
+      });
     } catch {
       setProbe({ state: 'down' });
     }
@@ -35,9 +53,11 @@ function useApiProbe() {
 
   useEffect(() => {
     run();
-    if (probe.state === 'ok') return;
+    // a sonda continua rodando mesmo com tudo certo: é assim que uma aba parada desde
+    // antes do último build descobre que o servidor já tem outro bundle
     const t = setInterval(() => {
-      if (tries.current++ > 60) return clearInterval(t);
+      if (probe.state === 'ok' && tries.current > 40) return clearInterval(t);
+      if (tries.current++ > 200) return clearInterval(t);
       run();
     }, 3000);
     return () => clearInterval(t);
@@ -45,6 +65,8 @@ function useApiProbe() {
 
   return [probe, run];
 }
+
+const esc = (v) => String(v ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 
 export default function Login() {
   const { login, persistent } = useAuth();
@@ -141,6 +163,20 @@ export default function Login() {
 
           <h2 className="font-[var(--font-display)] text-[22px] font-bold tracking-tight">Entrar no painel</h2>
           <p className="mt-1 text-[12.5px] text-mute">Agência e clientes usam o mesmo endereço, com permissões diferentes.</p>
+
+          {/* esta aba pode estar rodando um painel de antes do último build */}
+          {probe.stale ? (
+            <div className="mt-4 rounded-2xl border border-brand2/45 bg-brand2/10 p-3.5">
+              <p className="text-[12.5px] font-bold text-brand2">Existe uma versão nova deste painel</p>
+              <p className="mt-1.5 text-[12px] leading-relaxed text-mute">
+                Esta aba carregou <code className="font-mono">{esc(probe.mine)}</code>, e o servidor já está em{' '}
+                <code className="font-mono">{esc(probe.theirs)}</code>. Os erros que aparecem aqui podem ser de código que não existe mais — recarregue antes de confiar neles.
+              </p>
+              <button type="button" onClick={() => location.reload()} className="mt-2.5 inline-flex items-center gap-1.5 text-[12px] font-bold text-brand hover:underline">
+                <RefreshCw size={13} /> recarregar agora
+              </button>
+            </div>
+          ) : null}
 
           {/* o motivo honesto de "clico e não entra", antes de a pessoa tentar */}
           {probe.state === 'checking' ? null : blocked ? (
@@ -242,7 +278,12 @@ export default function Login() {
             </p>
           </div>
 
-          <p className="mt-5 text-center text-[12px] text-mute">
+          <p className="mt-4 text-center font-mono text-[10px] text-mute/60">
+            painel {(probe.mine || 'dev').replace('index-', '').replace('.js', '')}
+            {probe.theirs && probe.theirs !== probe.mine ? ` · servidor ${probe.theirs.replace('index-', '').replace('.js', '')}` : ''}
+          </p>
+
+          <p className="mt-3 text-center text-[12px] text-mute">
             <Link to="/player" className="font-semibold text-brand2 hover:underline">abrir o player de tela</Link>
             <span className="mx-2 text-line">|</span>
             <Link to="/inicio" className="hover:text-fg">conhecer o sistema</Link>
