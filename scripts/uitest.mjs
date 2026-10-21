@@ -120,9 +120,17 @@ async function render(code, route, token, opts = {}) {
   }
   w.eval(code);
   await w.__olhaTest.render(route);
-  await new Promise((r) => setTimeout(r, 900));
   const root = w.document.getElementById('root');
-  const text = (root.textContent || '').replace(/\s+/g, ' ').trim();
+  // espera assintótica: com um transporte aprendendo o caminho no voo, 900 ms fixos
+  // liam a tela no meio do boot e o teste reclamava de um problema que não existia
+  const want = (opts.expect || []).map((x) => x.toLowerCase());
+  let text = '';
+  for (let i = 0; i < 30; i++) {
+    await new Promise((r) => setTimeout(r, 120));
+    text = (root.textContent || '').replace(/\s+/g, ' ').trim();
+    if (want.length && want.every((x) => text.includes(x))) break;
+    if (!want.length && text.length > 40 && i > 6) break;
+  }
   const html = root.innerHTML;
   await new Promise((r) => setTimeout(r, 50));
   if (opts.keep) return { text, html, errors, w, dom };
@@ -144,7 +152,7 @@ async function main() {
   for (const r of ROUTES) {
     const isPlayer = r.path === '/player';
     const token = r.public && !isPlayer ? null : agency.token;
-    const { text, errors } = await render(code, r.path, token);
+    const { text, errors } = await render(code, r.path, token, { expect: r.expect });
     const missing = r.expect.filter((e) => !text.toLowerCase().includes(e.toLowerCase()));
     const hardErrors = errors.filter((e) => !/not implemented|Could not parse CSS|@media|jsdomError.*not implemented/i.test(e));
     const okRow = !missing.length && !hardErrors.length && text.length > 40;

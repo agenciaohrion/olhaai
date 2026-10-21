@@ -17,12 +17,29 @@ const CACHE = 'olha-media-v1';
 const HEARTBEAT_MS = 15000;
 const VIDEO_BLOB_MAX = 28 * 1024 * 1024;
 
+// o aparelho roda em TV Box, tablet de carro, rede de cliente: se um proxy no caminho
+// descartar Authorization, a tela ficaria muda para sempre. mesmo plano do painel — se o
+// cabeçalho não passou, repetimos pela rota ?token= e lembramos o transporte da sessão.
+let viaQuery = false;
 const api = async (path, { method = 'GET', body, form, token } = {}) => {
-  const headers = {};
   const t = token || store.get(TKEY) || '';
-  if (t) headers.authorization = `Bearer ${t}`;
-  if (body) headers['content-type'] = 'application/json';
-  const r = await fetch('/api' + path, { method, headers, body: form ? form : body ? JSON.stringify(body) : undefined });
+  const send = (query) => {
+    const headers = {};
+    if (t && !query) headers.authorization = `Bearer ${t}`;
+    if (body) headers['content-type'] = 'application/json';
+    let url = '/api' + path;
+    if (t && query) url += (url.includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(t);
+    return fetch(url, { method, headers, body: form ? form : body ? JSON.stringify(body) : undefined });
+  };
+  let r = await send(viaQuery);
+  if (r.status === 401 && t && !viaQuery) {
+    const again = await send(true);
+    if (again.ok) {
+      viaQuery = true;
+      console.warn('[olha] proxy comeu o cabeçalho Authorization — player seguindo pela query');
+      r = again;
+    }
+  }
   const txt = await r.text();
   let json = null;
   try {

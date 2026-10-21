@@ -66,10 +66,14 @@ export function tokenFromReq(req) {
 
 /** Middleware de rota para usuários logados. */
 export function requireUser(req, res, next) {
-  const payload = verify(tokenFromReq(req));
-  if (!payload?.uid) return res.status(401).json({ error: 'não autenticado' });
+  const token = tokenFromReq(req);
+  const payload = verify(token);
+  // separar "não chegou nada" de "chegou e não vale" é a diferença entre culpar o
+  // navegador, o proxy ou o banco — os três pareciam possíveis no relatório do usuário
+  if (!token) return res.status(401).json({ error: 'não autenticado (nenhum token chegou ao servidor — cabeçalho cortado no caminho?)' });
+  if (!payload?.uid) return res.status(401).json({ error: 'token deste navegador não vale mais para este servidor (reinício com segredo novo ou expiração)' });
   const user = get('SELECT * FROM users WHERE id=?', [payload.uid]);
-  if (!user) return res.status(401).json({ error: 'usuário inválido' });
+  if (!user) return res.status(401).json({ error: 'o token aponta para um usuário que não existe mais no banco' });
   req.user = user;
   next();
 }

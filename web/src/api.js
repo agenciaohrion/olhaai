@@ -5,7 +5,12 @@ import { store } from './store.js';
 
 const KEY = 'olha.token';
 export const getToken = () => store.get(KEY) || '';
-export const setToken = (t) => (t ? store.set(KEY, t) : store.del(KEY));
+export const setToken = (t) => {
+  if (t) store.set(KEY, t);
+  else store.del(KEY);
+  store.del(TKEY);
+  viaQuery = false;
+};
 
 export class ApiError extends Error {
   constructor(msg, status) {
@@ -14,16 +19,39 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Há um modo de falhar que não é do servidor nem do navegador: o caminho entre eles.
+ * Proxy/corpo de preview que descarta `Authorization` faz o login ser aceito e a chamada
+ * seguinte chegar sem credencial nenhuma — "não autenticado", sem explicação. O servidor
+ * também aceita o token por `?token=` (usado em <img> e <iframe>); se o cabeçalho falhou,
+ * repetimos por lá e lembramos o transporte desta aba, para não perder um 401 por chamada.
+ */
+const TKEY = 'olha.transport';
+// a aba lembra o transporte: só o primeiro pedido depois do boot paga um 401, não um por recarga
+let viaQuery = false;
+try { viaQuery = store.get(TKEY) === 'query'; } catch {}
+export const usesQueryTransport = () => viaQuery;
+
 export async function api(path, { method = 'GET', body, form, quiet } = {}) {
-  const headers = {};
   const t = getToken();
-  if (t) headers.authorization = `Bearer ${t}`;
-  if (body) headers['content-type'] = 'application/json';
-  const res = await fetch('/api' + path, {
-    method,
-    headers,
-    body: form ? form : body ? JSON.stringify(body) : undefined,
-  });
+  const send = (query) => {
+    const headers = {};
+    if (t && !query) headers.authorization = `Bearer ${t}`;
+    if (body) headers['content-type'] = 'application/json';
+    let url = '/api' + path;
+    if (t && query) url += (url.includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(t);
+    return fetch(url, { method, headers, body: form ? form : body ? JSON.stringify(body) : undefined });
+  };
+  let res = await send(viaQuery);
+  if (res.status === 401 && t && !viaQuery) {
+    const again = await send(true);
+    if (again.ok) {
+      viaQuery = true;
+      try { store.set(TKEY, 'query'); } catch {}
+      console.warn('[olha] o caminho descartou o cabeçalho Authorization — seguindo com o token na query');
+      res = again;
+    }
+  }
   const text = await res.text();
   let data = null;
   try {

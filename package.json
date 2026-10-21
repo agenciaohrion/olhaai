@@ -15,7 +15,8 @@
     "simulate": "node scripts/simulate.mjs",
     "test": "node scripts/smoke.mjs",
     "test:ui": "node scripts/uitest.mjs",
-    "check": "npm run build && npm test && npm run test:ui"
+    "check": "npm run build && npm test && npm run test:ui && npm run test:proxy",
+    "test:proxy": "node scripts/test-proxy.mjs"
   },
   "dependencies": {
     "express": "^4.21.2",

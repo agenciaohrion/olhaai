@@ -31,12 +31,14 @@ app.use((req, res, next) => {
   res.on('finish', () => {
     const ms = Date.now() - t0;
     if (req.path.startsWith('/uploads') || req.path.endsWith('/heartbeat')) return;
-    if (ms > 250 || res.statusCode >= 400) console.log(`${req.method} ${req.originalUrl} → ${res.statusCode} (${ms}ms)`);
+    if (ms > 250 || res.statusCode >= 400) console.log(`${req.method} ${redactUrl(req.originalUrl)} → ${res.statusCode} (${ms}ms)`);
   });
   next();
 });
 
 const api = express.Router();
+/** o token pode vir na query (para <img> e para quando o proxy corta o cabeçalho) — não vai para o log */
+const redactUrl = (u) => String(u).replace(/([?&])(token|access_token)=[^&]*/gi, '$1$2=•');
 const indexHtmlPath = path.join(DIST, 'index.html');
 /**
  * Que bundle o painel *deste servidor* está servindo agora. Uma aba antiga carrega um
