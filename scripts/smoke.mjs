@@ -160,6 +160,16 @@ async function main() {
   ok('adiciona 2 conteúdos à trilha', items.status === 200 && items.json.items.length === 2);
   ok('duração do item respeita o ajuste manual', items.json.items[0].slot_ms === 8000);
 
+  // a criação de grade aceita media_ids; a reescrita da trilha aceitava só items[].
+  // dois formatos para a mesma ideia virava um 422 misterioso na mão do cliente.
+  const short = await call(`/api/playlists/${plId}/items`, { method: 'PUT', token: C, body: { media_ids: [mediaId] } });
+  ok('trilha aceita o formato curto media_ids', short.status === 200 && short.json.items.length === 1);
+  await call(`/api/playlists/${plId}/items`, {
+    method: 'PUT',
+    token: C,
+    body: { items: [{ media_id: mediaId, duration_ms: 8000 }, { media_id: widgetId, duration_ms: 6000 }] },
+  });
+
   const pubNoBind = await call(`/api/playlists/${plId}/publish`, { method: 'POST', token: C });
   ok('publicação exige vínculo com tela', pubNoBind.status === 422);
 

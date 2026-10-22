@@ -154,7 +154,10 @@ router.put(
   '/playlists/:id/items',
   wrap((req, res) => {
     const p = guardPlaylist(req, req.params.id);
-    const list = Array.isArray(req.body?.items) ? req.body.items : [];
+    // a criação aceita media_ids; a reescrita aceitava só items[] — dois formatos para a
+    // mesma ideia é convite para um 422 misterioso. aceite os dois.
+    const body = req.body || {};
+    const list = Array.isArray(body.items) ? body.items : (Array.isArray(body.media_ids) ? body.media_ids.map((id) => ({ media_id: id })) : []);
     for (const it of list) {
       const m = get('SELECT * FROM media WHERE id=?', [Number(it.media_id)]);
       if (!m) bad(422, `conteúdo ${it.media_id} não existe`);
